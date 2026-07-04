@@ -54,6 +54,10 @@ func runScan(client *github.Client, olderThan time.Duration) (string, []scan.Can
 	if err != nil {
 		return "", nil, err
 	}
+	prTargets, err := client.OpenPRTargets(login)
+	if err != nil {
+		return "", nil, err
+	}
 	forks := 0
 	for _, r := range repos {
 		if r.IsFork && !r.IsArchived {
@@ -70,6 +74,7 @@ func runScan(client *github.Client, olderThan time.Duration) (string, []scan.Can
 		if err := client.EnrichFork(login, &repos[i]); err != nil {
 			return "", nil, err
 		}
+		repos[i].HasOpenUpstreamPR = prTargets[repos[i].Parent]
 	}
 	if forks > 0 {
 		fmt.Fprint(os.Stderr, "\r\033[K")

@@ -98,10 +98,12 @@ func (c *Client) ListRepos() ([]scan.Repo, error) {
 	}
 }
 
-// EnrichFork fills Parent, AheadBy and HasOpenUpstreamPR. A failed upstream
-// comparison is non-fatal: AheadBy stays AheadUnknown so the scan can warn.
-// If the repo itself is inaccessible (e.g. HTTP 451 legal block, 404 gone),
-// enrichment is silently skipped so the scan can continue.
+// EnrichFork fills Parent and AheadBy. A failed upstream comparison is
+// non-fatal: AheadBy stays AheadUnknown so the scan can warn. If the repo
+// itself is inaccessible (e.g. HTTP 451 legal block, 404 gone), enrichment is
+// silently skipped so the scan can continue.
+// HasOpenUpstreamPR is NOT set here; callers must apply the result of
+// OpenPRTargets after enrichment.
 func (c *Client) EnrichFork(login string, r *scan.Repo) error {
 	var full apiRepo
 	if err := c.get("repos/"+r.NameWithOwner, &full); err != nil {
@@ -127,21 +129,36 @@ func (c *Client) EnrichFork(login string, r *scan.Repo) error {
 	} else {
 		r.AheadBy = cmp.AheadBy
 	}
-
-	var search struct {
-		TotalCount int `json:"total_count"`
-	}
-	q := url.QueryEscape(fmt.Sprintf("repo:%s type:pr state:open author:%s", r.Parent, login))
-	if err := c.get("search/issues?q="+q, &search); err != nil {
-		// Rate-limit on search API is non-fatal; leave HasOpenUpstreamPR false.
-		var httpErr *api.HTTPError
-		if errors.As(err, &httpErr) && (httpErr.StatusCode == 403 || httpErr.StatusCode == 429) {
-			return nil
-		}
-		return err
-	}
-	r.HasOpenUpstreamPR = search.TotalCount > 0
 	return nil
+}
+
+// OpenPRTargets returns the set of "owner/repo" names that currently have
+// open PRs authored by login. One paginated search instead of one search
+// per fork — the per-fork variant trips GitHub's secondary rate limit.
+func (c *Client) OpenPRTargets(login string) (map[string]bool, error) {
+	set := make(map[string]bool)
+	q := url.QueryEscape("type:pr state:open author:" + login)
+	for page := 1; ; page++ {
+		var result struct {
+			TotalCount int `json:"total_count"`
+			Items      []struct {
+				RepositoryURL string `json:"repository_url"`
+			} `json:"items"`
+		}
+		path := fmt.Sprintf("search/issues?q=%s&per_page=100&page=%d", q, page)
+		if err := c.get(path, &result); err != nil {
+			return nil, err
+		}
+		for _, item := range result.Items {
+			// repository_url = https://<host>/repos/OWNER/REPO
+			if idx := strings.LastIndex(item.RepositoryURL, "/repos/"); idx >= 0 {
+				set[item.RepositoryURL[idx+len("/repos/"):]] = true
+			}
+		}
+		if len(result.Items) < 100 || len(set) >= result.TotalCount {
+			return set, nil
+		}
+	}
 }
 
 func (c *Client) Archive(nameWithOwner string) error {

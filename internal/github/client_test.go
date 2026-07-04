@@ -119,8 +119,6 @@ func TestEnrichFork(t *testing.T) {
 			fmt.Fprint(w, `{"parent":{"full_name":"up/f","default_branch":"main"}}`)
 		case strings.HasPrefix(r.URL.Path, "/repos/up/f/compare/"):
 			fmt.Fprint(w, `{"ahead_by":3}`)
-		case r.URL.Path == "/search/issues":
-			fmt.Fprint(w, `{"total_count":1}`)
 		default:
 			t.Errorf("unexpected path %s", r.URL.Path)
 		}
@@ -130,7 +128,7 @@ func TestEnrichFork(t *testing.T) {
 	if err := c.EnrichFork("mario", &repo); err != nil {
 		t.Fatal(err)
 	}
-	if repo.Parent != "up/f" || repo.AheadBy != 3 || !repo.HasOpenUpstreamPR {
+	if repo.Parent != "up/f" || repo.AheadBy != 3 {
 		t.Fatalf("enrichment wrong: %+v", repo)
 	}
 }
@@ -143,8 +141,8 @@ func TestEnrichForkComparisonFailureIsNonFatal(t *testing.T) {
 		case strings.HasPrefix(r.URL.Path, "/repos/up/f/compare/"):
 			w.WriteHeader(http.StatusNotFound)
 			fmt.Fprint(w, `{"message":"Not Found"}`)
-		case r.URL.Path == "/search/issues":
-			fmt.Fprint(w, `{"total_count":0}`)
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
 		}
 	}))
 	repo := scan.Repo{Name: "f", NameWithOwner: "mario/f", IsFork: true,
@@ -155,6 +153,60 @@ func TestEnrichForkComparisonFailureIsNonFatal(t *testing.T) {
 	if repo.AheadBy != scan.AheadUnknown {
 		t.Fatalf("failed comparison must set AheadUnknown, got %d", repo.AheadBy)
 	}
+}
+
+func TestOpenPRTargets(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		c := testClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path != "/search/issues" {
+				t.Errorf("unexpected path %s", r.URL.Path)
+			}
+			q := r.URL.Query().Get("q")
+			if !strings.Contains(q, "author:mario") {
+				t.Errorf("query %q does not contain author:mario", q)
+			}
+			fmt.Fprint(w, `{"total_count":2,"items":[
+				{"repository_url":"https://api.github.com/repos/up/f"},
+				{"repository_url":"https://api.github.com/repos/other/x"}
+			]}`)
+		}))
+		got, err := c.OpenPRTargets("mario")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !got["up/f"] || !got["other/x"] || len(got) != 2 {
+			t.Fatalf("unexpected set: %v", got)
+		}
+	})
+
+	t.Run("pagination", func(t *testing.T) {
+		c := testClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			page := r.URL.Query().Get("page")
+			if page == "1" {
+				items := make([]map[string]string, 100)
+				for i := range items {
+					items[i] = map[string]string{
+						"repository_url": fmt.Sprintf("https://api.github.com/repos/o/r%03d", i),
+					}
+				}
+				type resp struct {
+					TotalCount int                 `json:"total_count"`
+					Items      []map[string]string `json:"items"`
+				}
+				json.NewEncoder(w).Encode(resp{TotalCount: 101, Items: items})
+				return
+			}
+			// page 2: one item
+			fmt.Fprint(w, `{"total_count":101,"items":[{"repository_url":"https://api.github.com/repos/o/r100"}]}`)
+		}))
+		got, err := c.OpenPRTargets("mario")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(got) != 101 {
+			t.Fatalf("want 101 entries, got %d", len(got))
+		}
+	})
 }
 
 func TestArchiveSendsPatch(t *testing.T) {
