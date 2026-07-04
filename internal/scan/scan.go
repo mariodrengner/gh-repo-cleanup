@@ -4,7 +4,9 @@ package scan
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
+	"strconv"
 	"time"
 )
 
@@ -123,3 +125,23 @@ func protectionWarnings(r Repo) []string {
 	}
 	return w
 }
+
+// ParseThreshold parses "90d", "6m" or "1y" style inactivity thresholds.
+func ParseThreshold(s string) (time.Duration, error) {
+	m := thresholdRe.FindStringSubmatch(s)
+	if m == nil {
+		return 0, fmt.Errorf("invalid threshold %q: use e.g. 90d, 6m or 1y", s)
+	}
+	n, _ := strconv.Atoi(m[1])
+	day := 24 * time.Hour
+	switch m[2] {
+	case "d":
+		return time.Duration(n) * day, nil
+	case "m":
+		return time.Duration(n) * 30 * day, nil
+	default:
+		return time.Duration(n) * 365 * day, nil
+	}
+}
+
+var thresholdRe = regexp.MustCompile(`^([1-9]\d*)([dmy])$`)
