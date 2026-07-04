@@ -100,9 +100,16 @@ func (c *Client) ListRepos() ([]scan.Repo, error) {
 
 // EnrichFork fills Parent, AheadBy and HasOpenUpstreamPR. A failed upstream
 // comparison is non-fatal: AheadBy stays AheadUnknown so the scan can warn.
+// If the repo itself is inaccessible (e.g. HTTP 451 legal block, 404 gone),
+// enrichment is silently skipped so the scan can continue.
 func (c *Client) EnrichFork(login string, r *scan.Repo) error {
 	var full apiRepo
 	if err := c.get("repos/"+r.NameWithOwner, &full); err != nil {
+		var httpErr *api.HTTPError
+		if errors.As(err, &httpErr) && httpErr.StatusCode != 401 && httpErr.StatusCode < 500 {
+			// Repo is inaccessible (legal block, gone, forbidden) — skip silently.
+			return nil
+		}
 		return err
 	}
 	if full.Parent == nil {
@@ -126,6 +133,11 @@ func (c *Client) EnrichFork(login string, r *scan.Repo) error {
 	}
 	q := url.QueryEscape(fmt.Sprintf("repo:%s type:pr state:open author:%s", r.Parent, login))
 	if err := c.get("search/issues?q="+q, &search); err != nil {
+		// Rate-limit on search API is non-fatal; leave HasOpenUpstreamPR false.
+		var httpErr *api.HTTPError
+		if errors.As(err, &httpErr) && (httpErr.StatusCode == 403 || httpErr.StatusCode == 429) {
+			return nil
+		}
 		return err
 	}
 	r.HasOpenUpstreamPR = search.TotalCount > 0
