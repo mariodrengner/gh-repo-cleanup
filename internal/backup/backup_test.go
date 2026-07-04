@@ -73,7 +73,15 @@ func TestBundleCreatesVerifiableBundleAndMetadata(t *testing.T) {
 }
 
 func TestBundleFailsOnBrokenMirror(t *testing.T) {
-	if _, err := Bundle(t.TempDir(), t.TempDir(), Meta{Name: "x"}, time.Now()); err == nil {
+	destBase := t.TempDir()
+	if _, err := Bundle(t.TempDir(), destBase, Meta{Name: "x"}, time.Now()); err == nil {
 		t.Fatal("Bundle on a non-git dir must fail")
+	}
+	entries, err := os.ReadDir(destBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("expected destBase to be empty after error, but found %d entries", len(entries))
 	}
 }

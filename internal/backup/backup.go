@@ -38,11 +38,16 @@ func MetaFor(r scan.Repo) Meta {
 // Bundle creates <destBase>/<name>-<date>/<name>.bundle plus metadata.json
 // from an existing git mirror directory. On any error nothing must be
 // treated as backed up.
-func Bundle(mirrorDir, destBase string, meta Meta, now time.Time) (string, error) {
+func Bundle(mirrorDir, destBase string, meta Meta, now time.Time) (bundlePath string, err error) {
 	dir := filepath.Join(destBase, fmt.Sprintf("%s-%s", meta.Name, now.Format("2006-01-02")))
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
+	defer func() {
+		if err != nil {
+			os.RemoveAll(dir)
+		}
+	}()
 	bundle := filepath.Join(dir, meta.Name+".bundle")
 	cmd := exec.Command("git", "-C", mirrorDir, "bundle", "create", bundle, "--all")
 	if out, err := cmd.CombinedOutput(); err != nil {
