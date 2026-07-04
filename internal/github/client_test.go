@@ -50,6 +50,30 @@ func TestUsername(t *testing.T) {
 	}
 }
 
+func TestGetRetriesOnceOnRateLimit(t *testing.T) {
+	var requestCount int
+	c := testClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		if requestCount == 1 {
+			w.WriteHeader(http.StatusTooManyRequests)
+			fmt.Fprint(w, `{"message":"rate limited"}`)
+			return
+		}
+		// Second request succeeds
+		fmt.Fprint(w, `{"login":"mario"}`)
+	}))
+	got, err := c.Username()
+	if err != nil {
+		t.Fatalf("Username() failed: %v", err)
+	}
+	if got != "mario" {
+		t.Fatalf("Username() got %q, want mario", got)
+	}
+	if requestCount != 2 {
+		t.Fatalf("got %d requests, want 2", requestCount)
+	}
+}
+
 func TestListReposPaginatesAndMapsFields(t *testing.T) {
 	c := testClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		page := r.URL.Query().Get("page")
