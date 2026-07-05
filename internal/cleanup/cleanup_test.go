@@ -88,6 +88,20 @@ func TestDeleteIsSkippedWhenBackupFails(t *testing.T) {
 	}
 }
 
+func TestUnknownActionReturnsError(t *testing.T) {
+	deps := Deps{}
+	res := Execute([]Task{{Repo: scan.Repo{Name: "r", NameWithOwner: "m/r"}, Do: scan.Action("bogus")}}, deps, nil)
+	if len(res) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(res))
+	}
+	if res[0].Err == nil {
+		t.Fatal("expected non-nil Err for unknown action")
+	}
+	if !strings.Contains(res[0].Err.Error(), "unknown action") {
+		t.Fatalf("expected error to contain 'unknown action', got %v", res[0].Err)
+	}
+}
+
 func TestBatchContinuesAfterFailureAndReportsProgress(t *testing.T) {
 	var progressed []string
 	deps := Deps{

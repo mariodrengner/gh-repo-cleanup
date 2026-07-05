@@ -11,6 +11,7 @@ import (
 	"github.com/mariodrengner/gh-repo-cleanup/internal/scan"
 )
 
+// Text renders candidates as an aligned table with warning lines.
 func Text(w io.Writer, cands []scan.Candidate) {
 	if len(cands) == 0 {
 		fmt.Fprintln(w, "No cleanup candidates found. ✨")
@@ -34,6 +35,7 @@ func Text(w io.Writer, cands []scan.Candidate) {
 	tw.Flush()
 }
 
+// JSON writes candidates as indented JSON.
 func JSON(w io.Writer, cands []scan.Candidate) error {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")

@@ -53,6 +53,9 @@ func Bundle(mirrorDir, destBase string, meta Meta, now time.Time) (bundlePath st
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("git bundle create: %w\n%s", err, out)
 	}
+	if out, err := exec.Command("git", "bundle", "verify", bundle).CombinedOutput(); err != nil {
+		return "", fmt.Errorf("git bundle verify: %w\n%s", err, out)
+	}
 	meta.DeletedAt = now
 	raw, err := json.MarshalIndent(meta, "", "  ")
 	if err != nil {

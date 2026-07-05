@@ -68,6 +68,8 @@ func run(t Task, deps Deps) Result {
 		}
 		res.BundlePath = bundle
 		res.Err = deps.Delete(t.Repo.NameWithOwner)
+	default:
+		res.Err = fmt.Errorf("unknown action %q", t.Do)
 	}
 	return res
 }
