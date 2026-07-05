@@ -4,11 +4,17 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
+	gh "github.com/cli/go-gh/v2"
+	"github.com/mariodrengner/gh-repo-cleanup/internal/cleanup"
 	"github.com/mariodrengner/gh-repo-cleanup/internal/github"
 	"github.com/mariodrengner/gh-repo-cleanup/internal/report"
 	"github.com/mariodrengner/gh-repo-cleanup/internal/scan"
+	"github.com/mariodrengner/gh-repo-cleanup/internal/tui"
 )
 
 func main() {
@@ -39,9 +45,33 @@ func main() {
 	case *list:
 		report.Text(os.Stdout, cands)
 	default:
-		// Interactive TUI is wired in a later task.
-		report.Text(os.Stdout, cands)
-		fmt.Fprintln(os.Stderr, "\n(interactive mode not implemented yet — read-only report shown)")
+		if len(cands) == 0 {
+			report.Text(os.Stdout, cands)
+			return
+		}
+		canDelete, err := client.HasDeleteScope()
+		if err != nil {
+			fatal(err)
+		}
+		if !canDelete {
+			fmt.Fprintln(os.Stderr,
+				"note: token lacks the delete_repo scope — deletions are disabled.\n"+
+					"      enable with: gh auth refresh -s delete_repo")
+		}
+		deps := cleanup.Deps{
+			Archive:   client.Archive,
+			Delete:    client.Delete,
+			Mirror:    mirrorViaGh,
+			BackupDir: backupDir(),
+			Now:       time.Now(),
+		}
+		app := tui.NewApp(cands, canDelete,
+			func(tasks []cleanup.Task, progress func(cleanup.Result)) []cleanup.Result {
+				return cleanup.Execute(tasks, deps, progress)
+			})
+		if _, err := tea.NewProgram(app).Run(); err != nil {
+			fatal(err)
+		}
 	}
 }
 
@@ -85,4 +115,21 @@ func runScan(client *github.Client, olderThan time.Duration) (string, []scan.Can
 func fatal(err error) {
 	fmt.Fprintln(os.Stderr, "error:", err)
 	os.Exit(1)
+}
+
+// mirrorViaGh clones a mirror through gh so auth and git protocol just work.
+func mirrorViaGh(nameWithOwner, dest string) error {
+	_, stderr, err := gh.Exec("repo", "clone", nameWithOwner, dest, "--", "--mirror")
+	if err != nil {
+		return fmt.Errorf("%s: %w", strings.TrimSpace(stderr.String()), err)
+	}
+	return nil
+}
+
+func backupDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fatal(err)
+	}
+	return filepath.Join(home, ".local", "share", "gh-repo-cleanup", "backups")
 }
