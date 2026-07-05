@@ -42,10 +42,10 @@ func (m SelectModel) Update(msg tea.Msg) (SelectModel, tea.Cmd) {
 			m.Cursor++
 		}
 	case "a":
-		m.toggle(scan.ActionArchive)
+		m = m.toggle(scan.ActionArchive)
 	case "d":
 		if m.CanDelete {
-			m.toggle(scan.ActionDelete)
+			m = m.toggle(scan.ActionDelete)
 		} else {
 			m.Note = "deletions disabled — run: gh auth refresh -s delete_repo"
 		}
@@ -57,12 +57,13 @@ func (m SelectModel) Update(msg tea.Msg) (SelectModel, tea.Cmd) {
 	return m, nil
 }
 
-func (m *SelectModel) toggle(a scan.Action) {
+func (m SelectModel) toggle(a scan.Action) SelectModel {
 	if m.Marks[m.Cursor] == a {
 		delete(m.Marks, m.Cursor)
 	} else {
 		m.Marks[m.Cursor] = a
 	}
+	return m
 }
 
 func (m SelectModel) View() string {
