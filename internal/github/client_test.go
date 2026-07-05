@@ -165,6 +165,9 @@ func TestOpenPRTargets(t *testing.T) {
 			if !strings.Contains(q, "author:mario") {
 				t.Errorf("query %q does not contain author:mario", q)
 			}
+			if !strings.Contains(q, "archived:false") {
+				t.Errorf("query %q does not contain archived:false", q)
+			}
 			fmt.Fprint(w, `{"total_count":2,"items":[
 				{"repository_url":"https://api.github.com/repos/up/f"},
 				{"repository_url":"https://api.github.com/repos/other/x"}

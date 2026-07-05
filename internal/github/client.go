@@ -133,11 +133,13 @@ func (c *Client) EnrichFork(login string, r *scan.Repo) error {
 }
 
 // OpenPRTargets returns the set of "owner/repo" names that currently have
-// open PRs authored by login. One paginated search instead of one search
-// per fork — the per-fork variant trips GitHub's secondary rate limit.
+// open PRs authored by login. PRs against archived (read-only) repos are
+// excluded, because they can never be merged and deleting the fork loses
+// nothing actionable. One paginated search instead of one search per fork —
+// the per-fork variant trips GitHub's secondary rate limit.
 func (c *Client) OpenPRTargets(login string) (map[string]bool, error) {
 	set := make(map[string]bool)
-	q := url.QueryEscape("type:pr state:open author:" + login)
+	q := url.QueryEscape("type:pr state:open archived:false author:" + login)
 	for page := 1; ; page++ {
 		var result struct {
 			TotalCount int `json:"total_count"`
