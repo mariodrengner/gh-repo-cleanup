@@ -14,6 +14,7 @@ type SelectModel struct {
 	Cands     []scan.Candidate
 	Marks     map[int]scan.Action
 	Cursor    int
+	Sort      scan.SortMode
 	CanDelete bool
 	Note      string
 	Done      bool
@@ -51,10 +52,40 @@ func (m SelectModel) Update(msg tea.Msg) (SelectModel, tea.Cmd) {
 		}
 	case " ":
 		delete(m.Marks, m.Cursor)
+	case "s":
+		m = m.cycleSort()
 	case "enter":
 		m.Done = true
 	}
 	return m, nil
+}
+
+func (m SelectModel) cycleSort() SelectModel {
+	// Build name-based marks so they survive the re-ordering.
+	nameMarks := make(map[string]scan.Action, len(m.Marks))
+	for idx, action := range m.Marks {
+		nameMarks[m.Cands[idx].Repo.Name] = action
+	}
+	currentName := ""
+	if len(m.Cands) > 0 {
+		currentName = m.Cands[m.Cursor].Repo.Name
+	}
+
+	// Advance the mode.
+	m.Sort = (m.Sort + 1) % 3
+	scan.Sort(m.Cands, m.Sort)
+
+	// Rebuild index-based marks and reposition cursor.
+	m.Marks = make(map[int]scan.Action, len(nameMarks))
+	for i, c := range m.Cands {
+		if action, ok := nameMarks[c.Repo.Name]; ok {
+			m.Marks[i] = action
+		}
+		if c.Repo.Name == currentName {
+			m.Cursor = i
+		}
+	}
+	return m
 }
 
 func (m SelectModel) toggle(a scan.Action) SelectModel {
@@ -98,6 +129,6 @@ func (m SelectModel) View() string {
 	if m.Note != "" {
 		fmt.Fprintf(&b, "\n  %s\n", m.Note)
 	}
-	b.WriteString("\n[a] archive  [d] delete  [space] unmark  [enter] continue  [q] quit\n")
+	fmt.Fprintf(&b, "\n[a] archive  [d] delete  [space] unmark  [s] sort: %s  [enter] continue  [q] quit\n", m.Sort)
 	return b.String()
 }

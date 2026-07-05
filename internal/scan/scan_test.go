@@ -103,12 +103,63 @@ func TestSortingOrphansFirstThenStaleForksThenInactive(t *testing.T) {
 		Repo{Name: "a-stale-fork", IsFork: true, AheadBy: 2, PushedAt: old()},
 		Repo{Name: "m-orphan", IsFork: true, AheadBy: 0, PushedAt: recent()},
 	)
+	Sort(c, SortSafety)
 	got := []string{c[0].Repo.Name, c[1].Repo.Name, c[2].Repo.Name}
 	want := []string{"m-orphan", "a-stale-fork", "z-inactive"}
 	for i := range want {
 		if got[i] != want[i] {
 			t.Fatalf("order: got %v, want %v", got, want)
 		}
+	}
+}
+
+func TestEvaluateDefaultSortIsOldestFirst(t *testing.T) {
+	oldest := now.AddDate(-3, 0, 0)
+	middle := now.AddDate(-2, 0, 0)
+	// newest is old() = 2 years ago = same as middle? let's use distinct values
+	newest := now.AddDate(-1, -1, 0) // 13 months ago (still qualifies)
+	c := eval(t,
+		Repo{Name: "b-mid", PushedAt: middle},
+		Repo{Name: "c-new", PushedAt: newest},
+		Repo{Name: "a-old", PushedAt: oldest},
+	)
+	if len(c) != 3 {
+		t.Fatalf("want 3 candidates, got %d", len(c))
+	}
+	got := []string{c[0].Repo.Name, c[1].Repo.Name, c[2].Repo.Name}
+	want := []string{"a-old", "b-mid", "c-new"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("default sort must be oldest-first: got %v, want %v", got, want)
+		}
+	}
+}
+
+func TestSortName(t *testing.T) {
+	c := []Candidate{
+		{Repo: Repo{Name: "zebra", PushedAt: old()}},
+		{Repo: Repo{Name: "apple", PushedAt: old()}},
+		{Repo: Repo{Name: "mango", PushedAt: old()}},
+	}
+	Sort(c, SortName)
+	got := []string{c[0].Repo.Name, c[1].Repo.Name, c[2].Repo.Name}
+	want := []string{"apple", "mango", "zebra"}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("SortName: got %v, want %v", got, want)
+		}
+	}
+}
+
+func TestSortDateTieBreak(t *testing.T) {
+	sameTime := old()
+	c := []Candidate{
+		{Repo: Repo{Name: "z-repo", PushedAt: sameTime}},
+		{Repo: Repo{Name: "a-repo", PushedAt: sameTime}},
+	}
+	Sort(c, SortDate)
+	if c[0].Repo.Name != "a-repo" || c[1].Repo.Name != "z-repo" {
+		t.Fatalf("tie-break by name: got %v %v", c[0].Repo.Name, c[1].Repo.Name)
 	}
 }
 

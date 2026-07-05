@@ -5,7 +5,6 @@ package scan
 import (
 	"fmt"
 	"regexp"
-	"sort"
 	"strconv"
 	"time"
 )
@@ -105,11 +104,10 @@ func Evaluate(repos []Repo, opts Options) []Candidate {
 		}
 	}
 
-	for _, group := range [][]Candidate{orphans, staleForks, inactive} {
-		sort.Slice(group, func(i, j int) bool { return group[i].Repo.Name < group[j].Repo.Name })
-	}
 	out := append(orphans, staleForks...)
-	return append(out, inactive...)
+	out = append(out, inactive...)
+	Sort(out, SortDate)
+	return out
 }
 
 func protectionWarnings(r Repo) []string {
