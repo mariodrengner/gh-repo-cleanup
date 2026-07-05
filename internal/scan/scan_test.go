@@ -116,7 +116,6 @@ func TestSortingOrphansFirstThenStaleForksThenInactive(t *testing.T) {
 func TestEvaluateDefaultSortIsOldestFirst(t *testing.T) {
 	oldest := now.AddDate(-3, 0, 0)
 	middle := now.AddDate(-2, 0, 0)
-	// newest is old() = 2 years ago = same as middle? let's use distinct values
 	newest := now.AddDate(-1, -1, 0) // 13 months ago (still qualifies)
 	c := eval(t,
 		Repo{Name: "b-mid", PushedAt: middle},

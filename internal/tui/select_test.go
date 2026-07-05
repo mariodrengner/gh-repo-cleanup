@@ -176,6 +176,58 @@ func TestSortMarksFollowRepo(t *testing.T) {
 	}
 }
 
+func TestSortMarksSurviveFullCycle(t *testing.T) {
+	// sorterCands in SortDate order: "z-old"=0, "a-new"=1
+	m := NewSelect(sorterCands(), true)
+	// move cursor to "a-new" (index 1) and mark it
+	m, _ = m.Update(key("down"))
+	m, _ = m.Update(key("a"))
+
+	// Press s three times: date → safety → name → date
+	// After each press, mark should follow "a-new" to its new index
+	// First press: s → SortSafety
+	m, _ = m.Update(key("s"))
+	if m.Sort != scan.SortSafety {
+		t.Fatalf("after 1st s: want SortSafety, got %v", m.Sort)
+	}
+	// Find "a-new" index and verify mark follows it
+	idx := findCandidateIndex(m.Cands, "a-new")
+	if m.Marks[idx] != scan.ActionArchive {
+		t.Fatalf("after SortSafety: mark must follow 'a-new' to index %d, got %v", idx, m.Marks)
+	}
+
+	// Second press: s → SortName
+	m, _ = m.Update(key("s"))
+	if m.Sort != scan.SortName {
+		t.Fatalf("after 2nd s: want SortName, got %v", m.Sort)
+	}
+	// Find "a-new" index and verify mark follows it
+	idx = findCandidateIndex(m.Cands, "a-new")
+	if m.Marks[idx] != scan.ActionArchive {
+		t.Fatalf("after SortName: mark must follow 'a-new' to index %d, got %v", idx, m.Marks)
+	}
+
+	// Third press: s → SortDate (wrap around)
+	m, _ = m.Update(key("s"))
+	if m.Sort != scan.SortDate {
+		t.Fatalf("after 3rd s: want SortDate (wrap), got %v", m.Sort)
+	}
+	// Find "a-new" index and verify mark follows it
+	idx = findCandidateIndex(m.Cands, "a-new")
+	if m.Marks[idx] != scan.ActionArchive {
+		t.Fatalf("after SortDate: mark must follow 'a-new' to index %d, got %v", idx, m.Marks)
+	}
+}
+
+func findCandidateIndex(cands []scan.Candidate, name string) int {
+	for i, c := range cands {
+		if c.Repo.Name == name {
+			return i
+		}
+	}
+	return -1
+}
+
 func TestSortCursorFollowsRepo(t *testing.T) {
 	// sorterCands in SortDate order: "z-old"=0, "a-new"=1
 	m := NewSelect(sorterCands(), true)

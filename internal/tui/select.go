@@ -72,7 +72,7 @@ func (m SelectModel) cycleSort() SelectModel {
 	}
 
 	// Advance the mode.
-	m.Sort = (m.Sort + 1) % 3
+	m.Sort = (m.Sort + 1) % (scan.SortName + 1)
 	scan.Sort(m.Cands, m.Sort)
 
 	// Rebuild index-based marks and reposition cursor.
