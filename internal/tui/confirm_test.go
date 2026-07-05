@@ -70,6 +70,18 @@ func TestBackspaceEditsInput(t *testing.T) {
 	if m.Input != "x" {
 		t.Fatalf("backspace: got %q", m.Input)
 	}
+
+	// Test rune-aware backspace with multi-byte UTF-8
+	m = confirmFixture(map[int]scan.Action{0: scan.ActionDelete})
+	m = typeString(m, "x")
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("ä")})
+	if m.Input != "xä" {
+		t.Fatalf("multi-byte input failed: got %q", m.Input)
+	}
+	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyBackspace})
+	if m.Input != "x" {
+		t.Fatalf("backspace multi-byte: expected %q, got %q", "x", m.Input)
+	}
 }
 
 func TestEscGoesBack(t *testing.T) {

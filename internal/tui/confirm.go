@@ -48,7 +48,8 @@ func (m ConfirmModel) Update(msg tea.Msg) (ConfirmModel, tea.Cmd) {
 		}
 	case tea.KeyBackspace:
 		if len(m.Input) > 0 {
-			m.Input = m.Input[:len(m.Input)-1]
+			runes := []rune(m.Input)
+			m.Input = string(runes[:len(runes)-1])
 		}
 	case tea.KeySpace:
 		m.Input += " "
