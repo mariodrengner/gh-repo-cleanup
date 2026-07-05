@@ -48,9 +48,9 @@ func TestFullFlowArchiveAndDelete(t *testing.T) {
 	var executed []cleanup.Task
 	app := NewApp(cands(), true, fakeExec(&executed))
 
-	drive(t, app, key("d"))                                  // mark row 0 delete
-	drive(t, app, key("down"), key("a"))                     // mark row 1 archive
-	drive(t, app, key("enter"))                              // to confirmation
+	drive(t, app, key("d"))              // mark row 0 delete
+	drive(t, app, key("down"), key("a")) // mark row 1 archive
+	drive(t, app, key("enter"))          // to confirmation
 	for _, r := range "delete 1" {
 		if r == ' ' {
 			drive(t, app, tea.KeyMsg{Type: tea.KeySpace})
