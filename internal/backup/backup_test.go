@@ -40,6 +40,7 @@ func makeMirror(t *testing.T) string {
 }
 
 func TestBundleCreatesVerifiableBundleAndMetadata(t *testing.T) {
+	t.Chdir(t.TempDir())
 	mirror := makeMirror(t)
 	dest := t.TempDir()
 	now := time.Date(2026, 7, 4, 10, 0, 0, 0, time.UTC)
@@ -56,7 +57,7 @@ func TestBundleCreatesVerifiableBundleAndMetadata(t *testing.T) {
 	if !strings.HasPrefix(bundle, wantDir) {
 		t.Fatalf("bundle %q not in %q", bundle, wantDir)
 	}
-	if out, err := exec.Command("git", "bundle", "verify", bundle).CombinedOutput(); err != nil {
+	if out, err := exec.Command("git", "-C", mirror, "bundle", "verify", bundle).CombinedOutput(); err != nil {
 		t.Fatalf("bundle not verifiable: %v\n%s", err, out)
 	}
 
