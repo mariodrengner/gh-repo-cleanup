@@ -3,7 +3,7 @@ module github.com/mariodrengner/gh-repo-cleanup
 go 1.25.0
 
 require (
-	github.com/charmbracelet/bubbletea v1.3.10
+	github.com/charmbracelet/bubbletea/v2 v2.0.9
 	github.com/cli/go-gh/v2 v2.13.0
 )
 
