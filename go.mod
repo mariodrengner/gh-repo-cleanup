@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/charmbracelet/bubbletea v1.3.10
-	github.com/cli/go-gh/v2 v2.16.1
+	github.com/cli/go-gh/v2 v2.16.2
 )
 
 require (
