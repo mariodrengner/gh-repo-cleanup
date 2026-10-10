@@ -1,0 +1,18 @@
+# Triaged exceptions for the Trivy gate (trivy.yaml).
+#
+# Rules:
+#   - Every entry needs id, statement (why it does not affect radiant, or what
+#     waits on upstream) and expired_at at most 31 days ahead (YYYY-MM-DD).
+#     From that day the finding blocks again.
+#   - Extending an entry means a new PR with a new statement.
+#   - Narrow with paths or purls where possible.
+#
+# Example:
+# vulnerabilities:
+#   - id: CVE-2026-12345
+#     purls: ["pkg:npm/example@1.2.3"]
+#     statement: Only reachable through the HTTP client, which radiant never loads
+#     expired_at: 2026-11-10
+vulnerabilities: []
+secrets: []
+misconfigurations: []

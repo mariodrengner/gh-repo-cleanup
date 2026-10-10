@@ -2,11 +2,18 @@ name: release
 on:
   push:
     tags: ["v*"]
-permissions:
-  contents: write
+permissions: {}
 jobs:
+  # Nothing is released before the security gate passes; findings are triaged in .trivyignore.yaml.
+  security:
+    uses: ./.github/workflows/security.yml
+    permissions:
+      contents: read
   release:
+    needs: security
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
       - uses: cli/gh-extension-precompile@v2

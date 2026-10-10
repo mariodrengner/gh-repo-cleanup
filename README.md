@@ -51,6 +51,14 @@ skipped; nothing is preselected.
 - Restore: `git clone <bundle> <name> && cd <name> && gh repo create <name> --private --source=. --push`
 - Archiving is reversible: `gh repo unarchive <owner>/<repo>`
 
+## Security checks
+
+`scripts/security.sh` runs gitleaks over the git history and Trivy over
+`go.mod`, secrets and config (tools pinned in `mise.toml`; run it with
+`mise exec -- scripts/security.sh`). HIGH and CRITICAL findings block every
+PR and every release. A finding that cannot be fixed yet gets an entry in
+`.trivyignore.yaml` with a statement and an expiry at most 31 days ahead.
+
 ## License
 
 MIT — sibling project of [dev-cleanup](https://github.com/mariodrengner/dev-cleanup).

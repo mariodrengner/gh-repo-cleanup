@@ -1,0 +1,9 @@
+# Security gate shared by CI, the release workflow and scripts/security.sh.
+# Blocks on HIGH and CRITICAL findings; triaged exceptions live in
+# .trivyignore.yaml, each with a reason and an expiry date.
+scan:
+  scanners: [vuln, secret, misconfig]
+  skip-dirs: [dist, .worktrees]
+severity: [HIGH, CRITICAL]
+exit-code: 1
+ignorefile: .trivyignore.yaml
