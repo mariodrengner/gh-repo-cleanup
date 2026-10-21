@@ -2,7 +2,25 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "postUpdateOptions": ["gomodTidy"],
+  "platformAutomerge": true,
+  "automergeType": "pr",
   "packageRules": [
+    {
+      "description": "Automerge once the required checks (test, security) pass: patches, digests and pins, and minors of CI actions and mise dev tools, which never ship in the binary. Go module minors and all majors stay manual. Bot PRs sat unmerged for 12 days before (2026-10-10 to 2026-10-22)",
+      "matchUpdateTypes": ["patch", "digest", "pin", "pinDigest"],
+      "automerge": true
+    },
+    {
+      "description": "CI actions and mise dev tools: minors too",
+      "matchManagers": ["github-actions", "mise"],
+      "matchUpdateTypes": ["minor"],
+      "automerge": true
+    },
+    {
+      "description": "Maturity as in homelab: skip releases that get a hotfix within days; security PRs bypass it",
+      "matchUpdateTypes": ["major", "minor", "patch", "digest"],
+      "minimumReleaseAge": "3 days"
+    },
     {
       "description": "bubbletea v2 moved to charm.land/bubbletea/v2 with a new API; that migration is manual, a version bump alone breaks the build",
       "matchPackageNames": ["github.com/charmbracelet/bubbletea"],
